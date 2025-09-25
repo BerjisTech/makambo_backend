@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Country {
+  id               String           @id @default(cuid())
+  name             String           @unique
+  techLevel        Int              @default(1)
+  knowledge        Json             @default("{}")
+  alliances        Alliance[]
+  deposits         ResourceDeposit[]
+  facilities       Facility[]
+  players          Player[]
+  flags            Flag[]
+  operationsOrigin Operation[]      @relation("OriginOperations")
+  missileLaunches  MissileStrike[]  @relation("MissileOrigin")
+  nuclearLaunches  NuclearStrike[]  @relation("NukeOrigin")
+  tradeOrders      TradeOrder[]
+  inventory        InventoryLot[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model Alliance {
+  id         String   @id @default(cuid())
+  name       String
+  charter    String?
+  countries  Country[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Flag {
+  id         String   @id @default(cuid())
+  borderId   String
+  latitude   Float
+  longitude  Float
+  status     String   @default("PENDING")
+  country    Country  @relation(fields: [countryId], references: [id])
+  countryId  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ResourceDeposit {
+  id          String   @id @default(cuid())
+  type        String
+  polygon     Json
+  remaining   Float
+  country     Country? @relation(fields: [countryId], references: [id])
+  countryId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  miningJobs  MiningJob[]
+}
+
+model Conflict {
+  id           String   @id @default(cuid())
+  type         String
+  regionId     String
+  status       String   @default("PENDING")
+  participants Json
+  notes        String?
+  startedAt    DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model MiningJob {
+  id          String           @id @default(cuid())
+  deposit     ResourceDeposit  @relation(fields: [depositId], references: [id])
+  depositId   String
+  toolLevel   String
+  workers     Int
+  duration    Int
+  status      String           @default("QUEUED")
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model InventoryLot {
+  id          String   @id @default(cuid())
+  resourceId  String
+  quantity    Float
+  quality     Float
+  location    String
+  country     Country @relation(fields: [countryId], references: [id])
+  countryId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Facility {
+  id           String        @id @default(cuid())
+  type         String
+  locationId   String
+  status       String
+  country      Country?      @relation(fields: [countryId], references: [id])
+  countryId    String?
+  jobs         FacilityJob[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model FacilityJob {
+  id          String    @id @default(cuid())
+  facility    Facility  @relation(fields: [facilityId], references: [id])
+  facilityId  String
+  recipeId    String
+  status      String    @default("QUEUED")
+  inputs      Json?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Operation {
+  id               String          @id @default(cuid())
+  type             String
+  originCountry    Country         @relation("OriginOperations", fields: [originCountryId], references: [id])
+  originCountryId  String
+  targetRegionId   String
+  status           String          @default("PLANNED")
+  units            Json
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  missileStrikes   MissileStrike[]
+}
+
+model MissileStrike {
+  id                String    @id @default(cuid())
+  missileId         String
+  originCountry     Country   @relation("MissileOrigin", fields: [originCountryId], references: [id])
+  originCountryId   String
+  targetRegionId    String
+  status            String    @default("IN_FLIGHT")
+  flightTimeMinutes Int
+  impactAt          DateTime?
+  operation         Operation? @relation(fields: [operationId], references: [id])
+  operationId       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model NuclearStrike {
+  id               String   @id @default(cuid())
+  warheadId        String
+  originCountry    Country  @relation("NukeOrigin", fields: [originCountryId], references: [id])
+  originCountryId  String
+  targetRegionId   String
+  status           String   @default("EXECUTED")
+  detonatedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model TradeOrder {
+  id            String   @id @default(cuid())
+  resourceId    String
+  type          String
+  quantity      Float
+  pricePerUnit  Float
+  country       Country @relation(fields: [countryId], references: [id])
+  countryId     String
+  status        String   @default("OPEN")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Player {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  displayName   String
+  passwordHash  String
+  rank          String   @default("RECRUIT")
+  country       Country? @relation(fields: [countryId], references: [id])
+  countryId     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EventLog {
+  id        String   @id @default(cuid())
+  type      String
+  payload   Json
+  audience  String?
+  createdAt DateTime @default(now())
+}
